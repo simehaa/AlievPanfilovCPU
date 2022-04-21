@@ -121,8 +121,8 @@ int main (int argc, char** argv) {
     PDE computation by sliding stencil over inner volume 
     Note: inner volume of padded mesh corresponds to full volume of unpadded mesh, 
     and when calling the index function, correct width and depth must be used:
-    Variables w and d are the correct width and depth for r_mesh and e_temp.
-    Variables wp and dp are the correct width and depth for e_mesh.
+    * Variables w and d are the correct width and depth for r_mesh and e_temp.
+    * Variables wp and dp are the correct width and depth for e_mesh.
     */
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t y = 1; y <= w; ++y) {
@@ -130,7 +130,7 @@ int main (int argc, char** argv) {
           e_center = e_mesh[index(x,y,z,wp,dp)]; // reusable variable
           r_center = r_mesh[index(x-1,y-1,z-1,w,d)]; // reusable variable
 
-          // New e_out_center
+          // New e_center (stored in e_temp)
           e_temp[index(x-1,y-1,z-1,w,d)] = e_center + dt*(
             d_dx2*(-6*e_center + 
               e_mesh[index(x-1,y,z,wp,dp)] + e_mesh[index(x+1,y,z,wp,dp)] +

@@ -6,4 +6,4 @@ Compile by running `$ make`, which requires gcc version >= 11 (otherwise, change
 
 ## Animate Results in Python
 
-Requires Python 3 and the modules *pandas* and *matplotlib*. It also requires *imagemagick* to write the animation as a gif. Then, simply run `python3 animate.py`, which produces *result.gif*.
+Requires Python 3 and the modules *pandas* and *matplotlib*. It also requires *imagemagick* to write the animation as a gif. Then, simply run `$ python3 animate.py`, which produces *result.gif*.

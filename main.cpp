@@ -136,7 +136,8 @@ int main (int argc, char** argv) {
               e_mesh[index(x-1,y,z,wp,dp)] + e_mesh[index(x+1,y,z,wp,dp)] +
               e_mesh[index(x,y-1,z,wp,dp)] + e_mesh[index(x,y+1,z,wp,dp)] +
               e_mesh[index(x,y,z-1,wp,dp)] + e_mesh[index(x,y,z+1,wp,dp)]
-						) - k*e_center*(e_center - a)*(e_center - 1) - e_center*r_center
+						) 
+            - k*e_center*(e_center - a)*(e_center - 1) - e_center*r_center
           );
 
           // New r_center

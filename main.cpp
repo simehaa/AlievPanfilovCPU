@@ -2,10 +2,29 @@
 #include <vector>
 #include <fstream>
 
-unsigned index(unsigned x, unsigned y, unsigned z, unsigned width, unsigned depth) {
+std::size_t index(
+  std::size_t x, 
+  std::size_t y, 
+  std::size_t z, 
+  std::size_t depth, 
+  std::size_t plane) {
   // 1D index corresponding to a flattened 3D variable. 
-  return z + (y*depth) + (x*width*depth);
+  return z + (y*depth) + (x*plane);
 }
+
+// void test_upper_dt(Options &options) {
+//   float ka = options.k*options.a;
+//   float k_1_a = options.k*(1 - options.a);
+//   float max = (ka > k_1_a) ? ka : k_1_a;
+//   float lambda = options.delta/(options.dx*options.dx);
+//   float r_plus = options.k*(options.b+1)*(options.b+1)/4.0;
+//   float upper_bound_dt = 1.0/(4*lambda + max + r_plus);
+//   if (options.dt > upper_bound_dt) 
+//     throw std::runtime_error(
+//       "Forward Euler method is not stable, because dt ("+std::to_string(options.dt)+
+//       ") > upper bound ("+std::to_string(upper_bound_dt)+")."
+//     );
+// }
 
 int main (int argc, char** argv) {
   // Constants in the PDE computation
@@ -20,7 +39,7 @@ int main (int argc, char** argv) {
   const float dt = 0.0001;
 
   // Mesh dimensions and number of iterations
-  const std::size_t num_iterations = 20000;
+  const std::size_t num_iterations = 10000;
   const std::size_t h = 50;
   const std::size_t w = 50;
   const std::size_t d = 50;
@@ -30,10 +49,12 @@ int main (int argc, char** argv) {
   const std::size_t wp = w + 2;
   const std::size_t dp = d + 2;
   const std::size_t volume = h*w*d;
-  const std::size_t padded_volume = hp*wp*dp;
+  const std::size_t volumep = hp*wp*dp;
+  const std::size_t plane = w*d;
+  const std::size_t planep = wp*dp;
 
   // Mesh variables
-  std::vector<float> e_mesh(padded_volume);
+  std::vector<float> e_mesh(volumep);
   std::vector<float> e_temp(volume);
   std::vector<float> r_mesh(volume);
   float e_center;
@@ -49,8 +70,8 @@ int main (int argc, char** argv) {
   for (std::size_t x = 1; x <= h; ++x) {
     for (std::size_t y = 1; y <= w; ++y) {
       for (std::size_t z = 1; z <= d; ++z) {
-        e_mesh[index(x,y,z,wp,dp)] = (y < w/2) ? 0.0 : 1.0;
-        r_mesh[index(x-1,y-1,z-1,w,d)] = (x < h/2) ? 1.0 : 0.0;
+        e_mesh[index(x,y,z,dp,planep)] = (y < w/2) ? 0.0 : 1.0;
+        r_mesh[index(x-1,y-1,z-1,d,plane)] = (x < h/2) ? 1.0 : 0.0;
       }
     }
   }
@@ -73,11 +94,11 @@ int main (int argc, char** argv) {
 
       // Save a slice
       for (std::size_t x = 1; x <= h; ++x) {
-        for (std::size_t y = 1; y <= w; ++y) {
+        for (std::size_t z = 1; z <= d; ++z) {
           // Print values
-          e_file << e_mesh[index(x,y,slice,wp,dp)];
-          r_file << r_mesh[index(x-1,y-1,slice-1,w,d)];
-          if (y < w) {
+          e_file << e_mesh[index(x,slice,z,dp,planep)];
+          r_file << r_mesh[index(x-1,slice-1,z-1,d,plane)];
+          if (z < d) {
             e_file << ",";
             r_file << ",";
           }
@@ -100,20 +121,20 @@ int main (int argc, char** argv) {
     */
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t y = 1; y <= w; ++y) {
-        e_mesh[index(x,y,0,wp,dp)] = e_mesh[index(x,y,2,wp,dp)]; // front surface
-        e_mesh[index(x,y,d+1,wp,dp)] = e_mesh[index(x,y,d-1,wp,dp)]; // back surface
+        e_mesh[index(x,y,0,dp,planep)] = e_mesh[index(x,y,2,dp,planep)]; // front surface
+        e_mesh[index(x,y,d+1,dp,planep)] = e_mesh[index(x,y,d-1,dp,planep)]; // back surface
       }
     }
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t z = 1; z <= d; ++z) {
-        e_mesh[index(x,0,z,wp,dp)] = e_mesh[index(x,2,z,wp,dp)]; // left surface
-        e_mesh[index(x,w+1,z,wp,dp)] = e_mesh[index(x,w-1,z,wp,dp)]; // right surface
+        e_mesh[index(x,0,z,dp,planep)] = e_mesh[index(x,2,z,dp,planep)]; // left surface
+        e_mesh[index(x,w+1,z,dp,planep)] = e_mesh[index(x,w-1,z,dp,planep)]; // right surface
       }
     }
     for (std::size_t y = 1; y <= w; ++y) {
       for (std::size_t z = 1; z <= d; ++z) {
-        e_mesh[index(0,y,z,wp,dp)] = e_mesh[index(2,y,z,wp,dp)]; // top surface
-        e_mesh[index(h+1,y,z,wp,dp)] = e_mesh[index(h-1,y,z,wp,dp)]; // bottom surface
+        e_mesh[index(0,y,z,dp,planep)] = e_mesh[index(2,y,z,dp,planep)]; // top surface
+        e_mesh[index(h+1,y,z,dp,planep)] = e_mesh[index(h-1,y,z,dp,planep)]; // bottom surface
       }
     }
 
@@ -127,21 +148,21 @@ int main (int argc, char** argv) {
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t y = 1; y <= w; ++y) {
         for (std::size_t z = 1; z <= d; ++z) {
-          e_center = e_mesh[index(x,y,z,wp,dp)]; // reusable variable
-          r_center = r_mesh[index(x-1,y-1,z-1,w,d)]; // reusable variable
+          e_center = e_mesh[index(x,y,z,dp,planep)]; // reusable variable
+          r_center = r_mesh[index(x-1,y-1,z-1,d,plane)]; // reusable variable
 
           // New e_center (stored in e_temp)
-          e_temp[index(x-1,y-1,z-1,w,d)] = e_center + dt*(
+          e_temp[index(x-1,y-1,z-1,d,plane)] = e_center + dt*(
             d_dx2*(-6*e_center + 
-              e_mesh[index(x-1,y,z,wp,dp)] + e_mesh[index(x+1,y,z,wp,dp)] +
-              e_mesh[index(x,y-1,z,wp,dp)] + e_mesh[index(x,y+1,z,wp,dp)] +
-              e_mesh[index(x,y,z-1,wp,dp)] + e_mesh[index(x,y,z+1,wp,dp)]
+              e_mesh[index(x-1,y,z,dp,planep)] + e_mesh[index(x+1,y,z,dp,planep)] +
+              e_mesh[index(x,y-1,z,dp,planep)] + e_mesh[index(x,y+1,z,dp,planep)] +
+              e_mesh[index(x,y,z-1,dp,planep)] + e_mesh[index(x,y,z+1,dp,planep)]
             ) 
             - k*e_center*(e_center - a)*(e_center - 1) - e_center*r_center
           );
 
           // New r_center
-          r_mesh[index(x-1,y-1,z-1,w,d)] = r_center + dt*(
+          r_mesh[index(x-1,y-1,z-1,d,plane)] = r_center + dt*(
             -(epsilon + my1*r_center/(my2 + e_center))*
             (r_center + k*e_center*(e_center - b - 1))
           );
@@ -153,7 +174,7 @@ int main (int argc, char** argv) {
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t y = 1; y <= w; ++y) {
         for (std::size_t z = 1; z <= d; ++z) {
-          e_mesh[index(x,y,z,wp,dp)] = e_temp[index(x-1,y-1,z-1,w,d)];
+          e_mesh[index(x,y,z,dp,planep)] = e_temp[index(x-1,y-1,z-1,d,plane)];
         }
       }
     }

@@ -42,33 +42,9 @@ def animate(e_list, r_list):
         fig, new_frame, len(e_list), interval=200, blit=False
     )
 
-    ani.save("./result.gif",  fps=5,  writer="imagemagick")
+    ani.save("./result-xz-slice.gif",  fps=5,  writer="imagemagick")
 
 
 if __name__ == "__main__":
     e_list, r_list = read_files()
     animate(e_list, r_list)
-
-"""
-def animate(e_list, r_list):
-    # Animate e and r as two subplots of imshow (image representation of a 2D mesh)
-    fig = plt.figure()
-    ax_e = fig.add_subplot(121)
-    ax_e.set_title("e mesh")
-    im_e = ax_e.imshow(e_list[0])
-    ax_r = fig.add_subplot(122)
-    ax_r.set_title("r mesh")
-    im_r = ax_r.imshow(r_list[0])
-    fig.colorbar(im_r, ax=ax_r)
-
-    # For matplotlibs FuncAnimation to call for each new frame
-    def new_frame(num):
-        im_e = ax_e.imshow(e_list[num])
-        im_r = ax_r.imshow(r_list[num])
-
-    ani = animation.FuncAnimation(
-        fig, new_frame, len(e_list), interval=200, blit=False
-    )
-
-    ani.save("./result.gif",  fps=5,  writer="imagemagick")
-"""

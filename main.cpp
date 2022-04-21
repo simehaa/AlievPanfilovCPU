@@ -153,7 +153,7 @@ int main (int argc, char** argv) {
     for (std::size_t x = 1; x <= h; ++x) {
       for (std::size_t y = 1; y <= w; ++y) {
         for (std::size_t z = 1; z <= d; ++z) {
-        e_mes h[index(x,y,z,wp,dp)] = e_temp[index(x-1,y-1,z-1,w,d)];
+          e_mesh[index(x,y,z,wp,dp)] = e_temp[index(x-1,y-1,z-1,w,d)];
         }
       }
     }

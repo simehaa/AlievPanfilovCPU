@@ -3,48 +3,60 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.ticker as ticker
 
 def read_files(data_path="./data"):
-    # Read files from data path
-    # Filenames are expected on the form 'eX.csv' or 'rX.csv', 
-    # where X is an arbitrary number
-    e_list = []
-    r_list = []
+    # Read files from data path, expected on the form 'e_xy_X.csv' 
+    # with 'e_' or 'r_', then 'xy_' or 'xz_', then 'X' (number).
+    e_xy = []
+    e_xz = []
+    r_xy = []
+    r_xz = []
     for filename in os.listdir(data_path):
-        arr = pd.read_csv(f"{data_path}/{filename}").values
-        if re.match(r"^(e)(\d)+(.csv)$", filename):
-            e_list.append(arr)
-        elif re.match(r"^(r)(\d)+(.csv)$", filename):
-            r_list.append(arr)
+        arr = pd.read_csv(f"{data_path}/{filename}", header=None).values
+        if re.match(r"^(e_xy_)(\d)+(.csv)$", filename):
+            e_xy.append(arr)
+        elif re.match(r"^(e_xz_)(\d)+(.csv)$", filename):
+            e_xz.append(arr)
+        elif re.match(r"^(r_xy_)(\d)+(.csv)$", filename):
+            r_xy.append(arr)
+        elif re.match(r"^(r_xz_)(\d)+(.csv)$", filename):
+            r_xz.append(arr)
         else:
-            raise NameError(f"Invalid filename: '{filename}' found in data folder.")
+            raise NameError(f"Invalid filename '{filename}' found in data folder.")
     
-    return e_list, r_list
+    return [[e_xy, e_xz], [r_xy, r_xz]]
 
 
-def animate(e_list, r_list):
+def animate(arrays):
     # Animate e and r as two subplots of imshow (image representation of a 2D mesh)
-    fig, ax = plt.subplots(1, 2)
-
-    ax[0].set_title("e mesh")
-    ax[1].set_title("r mesh")
-    im_e = ax[0].imshow(e_list[0])
-    im_r = ax[1].imshow(r_list[0])
-    fig.colorbar(im_e, ax=ax[0])
-    fig.colorbar(im_r, ax=ax[1])
+    fig, ax = plt.subplots(2, 2)
+    plt.rc('axes', titlesize=8)
+    e_xy = arrays[0][0]
+    frames = len(e_xy)
+    dim = e_xy[0].shape[0]
+    titles = [["e front (xy)", "e right (xz)"], ["r front (xy)", "r right (xz)"]]
+    for i in range(2):
+        for j in range(2): 
+            ax[i, j].set_title(titles[i][j])
+            im = ax[i, j].imshow(arrays[i][j][0], vmin=0.0, vmax=1.0)
+            ax[i, j].xaxis.set_major_locator(ticker.NullLocator())
+            ax[i, j].yaxis.set_major_locator(ticker.NullLocator())
+            fig.colorbar(im, ax=ax[i][j])
 
     # For matplotlibs FuncAnimation to call for each new frame
     def new_frame(num):
-        ax[0].imshow(e_list[num])
-        ax[1].imshow(r_list[num])
+        for i in range(2):
+            for j in range(2):
+                ax[i, j].imshow(arrays[i][j][num], vmin=0.0, vmax=1.0)
 
     ani = animation.FuncAnimation(
-        fig, new_frame, len(e_list), interval=200, blit=False
+        fig, new_frame, frames, interval=200, blit=False
     )
 
-    ani.save("./result-xz-slice.gif",  fps=5,  writer="imagemagick")
+    ani.save(f"./result.gif",  fps=5,  writer="imagemagick")
 
 
 if __name__ == "__main__":
-    e_list, r_list = read_files()
-    animate(e_list, r_list)
+    arrays = read_files()
+    animate(arrays)

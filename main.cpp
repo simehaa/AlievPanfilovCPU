@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <iostream>
 
 std::size_t index(
   std::size_t x, 
@@ -9,24 +10,16 @@ std::size_t index(
   std::size_t depth, 
   std::size_t plane) {
   // 1D index corresponding to a flattened 3D variable. 
-  return z + (y*depth) + (x*plane);
+  return z + y*depth + x*plane;
 }
 
-// void test_upper_dt(Options &options) {
-//   float ka = options.k*options.a;
-//   float k_1_a = options.k*(1 - options.a);
-//   float max = (ka > k_1_a) ? ka : k_1_a;
-//   float lambda = options.delta/(options.dx*options.dx);
-//   float r_plus = options.k*(options.b+1)*(options.b+1)/4.0;
-//   float upper_bound_dt = 1.0/(4*lambda + max + r_plus);
-//   if (options.dt > upper_bound_dt) 
-//     throw std::runtime_error(
-//       "Forward Euler method is not stable, because dt ("+std::to_string(options.dt)+
-//       ") > upper bound ("+std::to_string(upper_bound_dt)+")."
-//     );
-// }
-
 int main (int argc, char** argv) {
+  // Mesh dimensions and number of iterations
+  const std::size_t num_iterations = 5001;
+  const std::size_t h = 50;
+  const std::size_t w = 50;
+  const std::size_t d = 50;
+  
   // Constants in the PDE computation
   const float my1 = 0.07;
   const float my2 = 0.3;
@@ -35,14 +28,8 @@ int main (int argc, char** argv) {
   const float a = 0.1;
   const float b = 0.1;
   const float k = 8.0;
-  const float dx = 0.000143;
-  const float dt = 0.0001;
-
-  // Mesh dimensions and number of iterations
-  const std::size_t num_iterations = 10000;
-  const std::size_t h = 50;
-  const std::size_t w = 50;
-  const std::size_t d = 50;
+  const float dx = 1.0/3200;
+  const float dt = 0.00004;
 
   // Padded mesh dimensions and respective volumes
   const std::size_t hp = h + 2;
@@ -63,9 +50,25 @@ int main (int argc, char** argv) {
   // Other variables
   const float d_dx2 = delta/(dx*dx);
   std::size_t write_counter = 0; // Number of files that have been written
-  std::size_t write_frequency = 150; // How frequent (number of iterations) to write
-  std::size_t slice = d / 2; // Which slice index (along depth) to write
+  std::size_t write_frequency = 50; // How frequent (number of iterations) to write
+  std::size_t slice = h / 2; // Which slice index to write
+  std::ofstream e_file; 
+  std::ofstream r_file; 
+  std::string e_path;
+  std::string r_path;
 
+  // Check dt
+  float max_ka = (k*a > k*(1 - a)) ? k*a : k*(1 - a);
+  float r_plus = 0.25*k*(b + 1)*(b + 1);
+  float upper_dt_1 = 1.0/(4*delta/(dx*dx) + max_ka + r_plus);
+  float upper_dt_2 = 1/(epsilon + r_plus*my1/my2);
+  float upper_dt = (upper_dt_1 < upper_dt_2) ? upper_dt_1 : upper_dt_2;
+  if (dt > upper_dt) 
+    throw std::runtime_error(
+      "Forward Euler method is not stable, because dt = " +
+      std::to_string(dt) + " > " + std::to_string(upper_dt)
+    );
+  
   // Initial e and r
   for (std::size_t x = 1; x <= h; ++x) {
     for (std::size_t y = 1; y <= w; ++y) {
@@ -84,11 +87,9 @@ int main (int argc, char** argv) {
     Only write once per 'write_frequency' iteration.
     */
     if (t % write_frequency == 0) {
-      std::string e_path = "./data/e" + std::to_string(write_counter) + ".csv";
-      std::string r_path = "./data/r" + std::to_string(write_counter) + ".csv";
-      write_counter++;
-      std::ofstream e_file; 
-      std::ofstream r_file; 
+      // Write xz plane (view from right side of cube)
+      e_path = "./data/e_xz_" + std::to_string(write_counter) + ".csv";
+      r_path = "./data/r_xz_" + std::to_string(write_counter) + ".csv";
       e_file.open(e_path);
       r_file.open(r_path);
 
@@ -108,6 +109,31 @@ int main (int argc, char** argv) {
       }
       e_file.close();
       r_file.close();
+
+      // Write xy plane (view from front side of cube)
+      e_path = "./data/e_xy_" + std::to_string(write_counter) + ".csv";
+      r_path = "./data/r_xy_" + std::to_string(write_counter) + ".csv";
+      e_file.open(e_path);
+      r_file.open(r_path);
+
+      // Save a slice
+      for (std::size_t x = 1; x <= h; ++x) {
+        for (std::size_t y = 1; y <= w; ++y) {
+          // Print values
+          e_file << e_mesh[index(x,y,slice,dp,planep)];
+          r_file << r_mesh[index(x-1,y-1,slice-1,d,plane)];
+          if (y < w) {
+            e_file << ",";
+            r_file << ",";
+          }
+        }
+        e_file << "\n";
+        r_file << "\n";
+      }
+      e_file.close();
+      r_file.close();
+
+      write_counter++;
     }
 
     /*

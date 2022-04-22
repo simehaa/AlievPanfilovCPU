@@ -54,6 +54,7 @@ int main (int argc, char** argv) {
   std::size_t slice = h / 2; // Which slice index to write
   std::ofstream e_file; 
   std::ofstream r_file; 
+  std::ofstream info_file; 
   std::string e_path;
   std::string r_path;
 
@@ -78,6 +79,13 @@ int main (int argc, char** argv) {
       }
     }
   }
+
+  // Write info file
+  info_file.open("./data/info.txt");
+  info_file << "dx=" << dx << "\n";
+  info_file << "h=" << h << "\n";
+  info_file << "w=" << w << "\n";
+  info_file << "d=" << d << "\n";
 
   // Perform PDE model
   for (std::size_t t = 0; t < num_iterations; ++t) {
@@ -133,6 +141,8 @@ int main (int argc, char** argv) {
       e_file.close();
       r_file.close();
 
+      std::string time_str = "t" + std::to_string(write_counter);
+      info_file << time_str << "=" << t*dt << "\n";
       write_counter++;
     }
 

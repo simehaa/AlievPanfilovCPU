@@ -7,7 +7,7 @@ import matplotlib.ticker as ticker
 
 def read_files(data_path="./data"):
     # Read files from data path, expected on the form 'e_xy_X.csv' 
-    # with 'e_' or 'r_', then 'xy_' or 'xz_', then 'X' (number).
+    # with 'e_' or 'r_', then 'xy_' or 'xz_', then 'X' (number), then '.csv'.
     e_xy = []
     e_xz = []
     r_xy = []
@@ -43,27 +43,30 @@ def read_files(data_path="./data"):
 def animate(arrays, info):
     # Animate e and r as two subplots of imshow (image representation of a 2D mesh)
     fig, ax = plt.subplots(2, 2)
-    header = f"3D Mesh={int(info['h'])}*{int(info['w'])}*{int(info['d'])} elements, dx={1000*info['dx']} mm\n"
-    fig.suptitle(header + f"time={int(1000*info['times'][0]):3d} ms", fontsize=12)
-    plt.rc('axes', titlesize=8)
+    header = f"3D mesh={int(info['h'])}*{int(info['w'])}*{int(info['d'])} elements, time="
+    title_size = 10
+    subtitle_size = 8
+    emax = 1.0
+    rmax = 0.2
+    fig.suptitle(header + f"{float(info['times'][0]):1.2f}", fontsize=title_size)
+    plt.rc('axes', titlesize=subtitle_size)
     e_xy = arrays[0][0]
     frames = len(e_xy)
-    dim = e_xy[0].shape[0]
     titles = [["e front (xy)", "e right (xz)"], ["r front (xy)", "r right (xz)"]]
-    for i in range(2):
-        for j in range(2): 
+    for i in range(2): # e or r
+        for j in range(2): # xy or xz
+            im = ax[i, j].imshow(arrays[i][j][0], vmin=0.0, vmax=emax if (i == 0) else rmax)
             ax[i, j].set_title(titles[i][j])
-            im = ax[i, j].imshow(arrays[i][j][0], vmin=0.0, vmax=1.0)
             ax[i, j].xaxis.set_major_locator(ticker.NullLocator())
             ax[i, j].yaxis.set_major_locator(ticker.NullLocator())
             fig.colorbar(im, ax=ax[i][j])
 
     # For matplotlibs FuncAnimation to call for each new frame
     def new_frame(num):
-        fig.suptitle(header + f"time={int(1000*info['times'][num]):3d} ms", fontsize=12)
-        for i in range(2):
-            for j in range(2):
-                ax[i, j].imshow(arrays[i][j][num], vmin=0.0, vmax=1.0)
+        fig.suptitle(header + f"{float(info['times'][num]):1.2f}", fontsize=title_size)
+        for i in range(2): # e or r
+            for j in range(2): # xy or xz
+                ax[i, j].imshow(arrays[i][j][num], vmin=0.0, vmax=emax if (i == 0) else rmax)
 
     ani = animation.FuncAnimation(fig, new_frame, frames)
     ani.save(f"./result.gif",  fps=10,  writer="imagemagick")

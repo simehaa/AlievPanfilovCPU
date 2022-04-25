@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <cmath>
 
 std::size_t index(
   std::size_t x, 
@@ -15,23 +16,23 @@ std::size_t index(
 
 int main (int argc, char** argv) {
   // Mesh dimensions and number of iterations
-  const std::size_t num_iterations = 5001;
-  const std::size_t h = 50;
-  const std::size_t w = 50;
-  const std::size_t d = 50;
+  const std::size_t num_iterations = 3001;
+  const std::size_t h = 100;
+  const std::size_t w = 100;
+  const std::size_t d = 100;
   
   // Constants in the PDE computation
   const float my1 = 0.07;
   const float my2 = 0.3;
-  const float delta = 5.0e-5;
+  const float delta = 0.00005;
   const float epsilon = 0.01;
   const float a = 0.1;
   const float b = 0.1;
   const float k = 8.0;
-  const float dx = 1.0/3200;
-  const float dt = 0.00004;
+  const float dx = 1.0/h;
+  const float dt = 0.002;
 
-  // Padded mesh dimensions and respective volumes
+  // Mesh dimensions (with and without padding)
   const std::size_t hp = h + 2;
   const std::size_t wp = w + 2;
   const std::size_t dp = d + 2;
@@ -41,7 +42,7 @@ int main (int argc, char** argv) {
   const std::size_t planep = wp*dp;
 
   // Mesh variables
-  std::vector<float> e_mesh(volumep);
+  std::vector<float> e_mesh(volumep); // Padded
   std::vector<float> e_temp(volume);
   std::vector<float> r_mesh(volume);
   float e_center;
@@ -49,6 +50,9 @@ int main (int argc, char** argv) {
 
   // Other variables
   const float d_dx2 = delta/(dx*dx);
+  const float lam = d_dx2*dt;
+  const float gamma = 1 - 6*lam;
+  const float dtk = dt*k;
   std::size_t write_counter = 0; // Number of files that have been written
   std::size_t write_frequency = 50; // How frequent (number of iterations) to write
   std::size_t slice = h / 2; // Which slice index to write
@@ -61,12 +65,12 @@ int main (int argc, char** argv) {
   // Check dt
   float max_ka = (k*a > k*(1 - a)) ? k*a : k*(1 - a);
   float r_plus = 0.25*k*(b + 1)*(b + 1);
-  float upper_dt_1 = 1.0/(4*delta/(dx*dx) + max_ka + r_plus);
+  float upper_dt_1 = 1.0/(4*d_dx2 + max_ka + r_plus);
   float upper_dt_2 = 1/(epsilon + r_plus*my1/my2);
   float upper_dt = (upper_dt_1 < upper_dt_2) ? upper_dt_1 : upper_dt_2;
   if (dt > upper_dt) 
     throw std::runtime_error(
-      "Forward Euler method is not stable, because dt = " +
+      "Forward Euler method is unstable, because dt = " +
       std::to_string(dt) + " > " + std::to_string(upper_dt)
     );
   
@@ -74,8 +78,13 @@ int main (int argc, char** argv) {
   for (std::size_t x = 1; x <= h; ++x) {
     for (std::size_t y = 1; y <= w; ++y) {
       for (std::size_t z = 1; z <= d; ++z) {
-        e_mesh[index(x,y,z,dp,planep)] = (y < w/2) ? 0.0 : 1.0;
-        r_mesh[index(x-1,y-1,z-1,d,plane)] = (x < h/2) ? 1.0 : 0.0;
+        e_mesh[index(x,y,z,dp,planep)] = 0.25*(
+          (1 - std::cos(x*dx*3.1416))*
+          (1 - std::cos(y*dx*3.1416))
+        );
+        //e_mesh[index(x,y,z,dp,planep)] = (y < w/2) ? 0.0 : 1.0;
+        //r_mesh[index(x-1,y-1,z-1,d,plane)] = (x < h/2) ? 1.0 : 0.0;
+        r_mesh[index(x-1,y-1,z-1,d,plane)] = 0.0;
       }
     }
   }
@@ -86,6 +95,7 @@ int main (int argc, char** argv) {
   info_file << "h=" << h << "\n";
   info_file << "w=" << w << "\n";
   info_file << "d=" << d << "\n";
+  info_file << "rp=" << r_plus << "\n";
 
   // Perform PDE model
   for (std::size_t t = 0; t < num_iterations; ++t) {
@@ -188,18 +198,17 @@ int main (int argc, char** argv) {
           r_center = r_mesh[index(x-1,y-1,z-1,d,plane)]; // reusable variable
 
           // New e_center (stored in e_temp)
-          e_temp[index(x-1,y-1,z-1,d,plane)] = e_center + dt*(
-            d_dx2*(-6*e_center + 
+          e_temp[index(x-1,y-1,z-1,d,plane)] = lam*(
               e_mesh[index(x-1,y,z,dp,planep)] + e_mesh[index(x+1,y,z,dp,planep)] +
               e_mesh[index(x,y-1,z,dp,planep)] + e_mesh[index(x,y+1,z,dp,planep)] +
               e_mesh[index(x,y,z-1,dp,planep)] + e_mesh[index(x,y,z+1,dp,planep)]
-            ) 
-            - k*e_center*(e_center - a)*(e_center - 1) - e_center*r_center
-          );
+            ) + gamma*e_center
+            - dtk*e_center*(e_center - a)*(e_center - 1) 
+            - dt*e_center*r_center;
 
           // New r_center
-          r_mesh[index(x-1,y-1,z-1,d,plane)] = r_center + dt*(
-            -(epsilon + my1*r_center/(my2 + e_center))*
+          r_mesh[index(x-1,y-1,z-1,d,plane)] = r_center - dt*(
+            (epsilon + my1*r_center/(my2 + e_center))*
             (r_center + k*e_center*(e_center - b - 1))
           );
         }

@@ -16,7 +16,7 @@ std::size_t index(
 
 int main (int argc, char** argv) {
   // Mesh dimensions and number of iterations
-  const std::size_t num_iterations = 3001;
+  const std::size_t num_iterations = 15000 + 1;
   const std::size_t h = 100;
   const std::size_t w = 100;
   const std::size_t d = 100;
@@ -30,7 +30,7 @@ int main (int argc, char** argv) {
   const float b = 0.1;
   const float k = 8.0;
   const float dx = 1.0/h;
-  const float dt = 0.002;
+  const float dt = 0.005;
 
   // Mesh dimensions (with and without padding)
   const std::size_t hp = h + 2;
@@ -54,7 +54,7 @@ int main (int argc, char** argv) {
   const float gamma = 1 - 6*lam;
   const float dtk = dt*k;
   std::size_t write_counter = 0; // Number of files that have been written
-  std::size_t write_frequency = 50; // How frequent (number of iterations) to write
+  std::size_t write_frequency = 100; // How frequent (number of iterations) to write
   std::size_t slice = h / 2; // Which slice index to write
   std::ofstream e_file; 
   std::ofstream r_file; 
@@ -82,9 +82,10 @@ int main (int argc, char** argv) {
           (1 - std::cos(x*dx*3.1416))*
           (1 - std::cos(y*dx*3.1416))
         );
-        //e_mesh[index(x,y,z,dp,planep)] = (y < w/2) ? 0.0 : 1.0;
-        //r_mesh[index(x-1,y-1,z-1,d,plane)] = (x < h/2) ? 1.0 : 0.0;
-        r_mesh[index(x-1,y-1,z-1,d,plane)] = 0.0;
+        r_mesh[index(x-1,y-1,z-1,d,plane)] = 0.25*(
+          (std::cos(x*dx*3.1416))*
+          (std::cos(z*dx*3.1416))
+        );
       }
     }
   }

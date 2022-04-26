@@ -47,7 +47,7 @@ def animate(arrays, info):
     title_size = 10
     subtitle_size = 8
     emax = 1.0
-    rmax = 0.2
+    rmax = 1.0
     fig.suptitle(header + f"{float(info['times'][0]):1.2f}", fontsize=title_size)
     plt.rc('axes', titlesize=subtitle_size)
     e_xy = arrays[0][0]
